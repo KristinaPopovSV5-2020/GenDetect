@@ -6,6 +6,7 @@ from safe_image_folder import SafeImageFolder
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import numpy as np
+import cv2
 
 train_transforms = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -92,3 +93,17 @@ def find_best_threshold(y_true, y_score):
             best_f1, best_t = f1, t
     print(f"Best threshold: {best_t:.2f}, Best F1: {best_f1:.4f}")
     return best_t
+
+def visualize_heatmap(img, heatmap ):
+    # Resize the heatmap to match the original image size
+    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+
+    # Convert heatmap to RGB format and apply colormap
+    heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+
+    # Overlay the heatmap on the original image
+    superimposed_img = cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
+
+    cv2.imshow('Grad-CAM', superimposed_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
