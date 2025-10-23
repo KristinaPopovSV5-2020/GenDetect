@@ -4,7 +4,8 @@ import torch.nn as nn
 import timm
 import os
 
-from main import calculate_metrics, get_dataloaders
+from main import calculate_metrics, get_dataloaders, get_test_loader, plot_confusion_matrix, \
+    plot_curves, find_best_threshold
 
 # Configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -12,14 +13,34 @@ num_classes = 2
 batch_size = 32
 epochs = 50
 learning_rate = 1e-4
-train_dir = '/home/kristina-popov/workspace/AI_Image_Inspector/data/train'
-val_dir = '/home/kristina-popov/workspace/AI_Image_Inspector/data/val'
+train_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/train'
+val_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/valid'
+test_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/test'
+
 
 
 def build_model():
-    model = timm.create_model('resnet50', pretrained=True)
-    model.fc = nn.Linear(model.get_classifier().in_features, num_classes)
-    return model.to(device)
+    model = timm.create_model('resnet50', pretrained=True, num_classes=0)  # without FC dense
+
+    # Freeze ResNet parameters
+    for param in model.parameters():
+        param.requires_grad = False
+
+    classifier = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(2048, 512),
+        nn.ReLU(),
+        nn.Dropout(0.5),
+        nn.Linear(512, 1),
+        nn.Sigmoid()
+    )
+
+    full_model = nn.Sequential(
+        model,
+        classifier
+    )
+
+    return full_model.to(device)
 
 
 def train_one_epoch(model, train_loader, criterion, optimizer):
@@ -28,9 +49,9 @@ def train_one_epoch(model, train_loader, criterion, optimizer):
 
     for images, labels in train_loader:
         images = images.to(device)
-        labels = labels.to(device)
+        labels = labels.float().unsqueeze(1).to(device)  # convert to float and add dimension
 
-        if len(labels) == 0: # skip batch with only dummy data
+        if len(labels) == 0:
             continue
 
         outputs = model(images)
@@ -45,6 +66,7 @@ def train_one_epoch(model, train_loader, criterion, optimizer):
     return total_loss / len(train_loader)
 
 
+
 def evaluate(model, val_loader):
     model.eval()
     all_preds = []
@@ -55,14 +77,14 @@ def evaluate(model, val_loader):
         for images, labels in val_loader:
             images = images.to(device)
             labels = labels.to(device)
-
             outputs = model(images)
-            probs = torch.softmax(outputs, dim=1)
-            preds = torch.argmax(probs, dim=1)
+
+            probs = outputs.squeeze(1)  # [batch_size]
+            preds = (probs >= 0.5).long()
 
             all_preds.extend(preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
-            all_probs.extend(probs[:, 1].cpu().numpy())  # Probability for class 1
+            all_probs.extend(probs.cpu().numpy())
 
     y_true = np.array(all_labels)
     y_pred = np.array(all_preds)
@@ -71,11 +93,12 @@ def evaluate(model, val_loader):
     return y_true, y_pred, y_score
 
 
+
 def train_model():
     train_loader, val_loader = get_dataloaders(train_dir, val_dir, batch_size)
     model = build_model()
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    criterion = nn.BCELoss()
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
 
     for epoch in range(epochs):
         avg_loss = train_one_epoch(model, train_loader, criterion, optimizer)
@@ -89,5 +112,26 @@ def train_model():
     print("Model saved as 'finetuned_resnet50.pth'")
 
 
+def load_trained_model(model_path):
+    model = build_model()
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+    return model
+
+
+def test_model(model_path, test_dir, batch_size=32):
+    model = load_trained_model(model_path)
+    test_loader = get_test_loader(test_dir, batch_size)
+
+    y_true, y_pred, y_score = evaluate(model, test_loader)
+
+    print("Test Set Metrics:")
+    calculate_metrics(y_true, y_pred, y_score)
+    plot_confusion_matrix(y_true, y_pred)
+    plot_curves(y_true, y_score)
+    best_t = find_best_threshold(y_true, y_score)
+
+
 if __name__ == '__main__':
-    train_model()
+    #train_model()
+    test_model('finetuned_resnet50.pth', test_dir)
