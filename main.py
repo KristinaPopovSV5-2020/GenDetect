@@ -1,0 +1,109 @@
+from sklearn.metrics import precision_score, accuracy_score, recall_score, f1_score, roc_auc_score
+from torch.utils.data import DataLoader
+from torchvision import datasets, transforms
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from safe_image_folder import SafeImageFolder
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
+import numpy as np
+import cv2
+
+train_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.RandomRotation(20),
+    transforms.RandomAffine(0, translate=(0.1, 0.1), scale=(0.8, 1.2)),
+    transforms.RandomHorizontalFlip(),
+    transforms.RandomVerticalFlip(),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
+])
+
+
+val_transforms = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                         [0.229, 0.224, 0.225])
+])
+
+
+
+def calculate_metrics(y_true, y_pred, y_score):
+    accuracy = accuracy_score(y_true, y_pred)
+    precision = precision_score(y_true, y_pred)
+    recall = recall_score(y_true, y_pred)
+    f1 = f1_score(y_true, y_pred)
+    auc = roc_auc_score(y_true, y_score)
+
+    print(f"  Accuracy : {accuracy:.4f}")
+    print(f"  Precision: {precision:.4f}")
+    print(f"  Recall   : {recall:.4f}")
+    print(f"  F1 Score : {f1:.4f}")
+    print(f"  AUC-ROC  : {auc:.4f}")
+
+def get_dataloaders(train_dir, val_dir, batch_size):
+    train_dataset = SafeImageFolder(train_dir, transform=train_transforms)
+    val_dataset = SafeImageFolder(val_dir, transform=val_transforms)
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+
+    return train_loader, val_loader
+
+def get_test_loader(test_dir, batch_size):
+    test_dataset = SafeImageFolder(test_dir, transform=val_transforms)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    return test_loader
+
+def plot_confusion_matrix(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Real", "Fake"])
+    disp.plot(cmap=plt.cm.Blues)
+    plt.title("Confusion Matrix")
+    plt.show()
+
+
+def plot_curves(y_true, y_score):
+    fpr, tpr, _ = roc_curve(y_true, y_score)
+    prec, rec, _ = precision_recall_curve(y_true, y_score)
+
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.plot(fpr, tpr, label=f"AUC = {auc(fpr, tpr):.3f}")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("ROC Curve")
+    plt.legend()
+
+    plt.subplot(1, 2, 2)
+    plt.plot(rec, prec)
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curve")
+    plt.show()
+
+def find_best_threshold(y_true, y_score):
+    thresholds = np.arange(0.1, 0.9, 0.01)
+    best_f1, best_t = 0, 0.5
+    for t in thresholds:
+        preds = (y_score >= t).astype(int)
+        f1 = f1_score(y_true, preds)
+        if f1 > best_f1:
+            best_f1, best_t = f1, t
+    print(f"Best threshold: {best_t:.2f}, Best F1: {best_f1:.4f}")
+    return best_t
+
+def visualize_heatmap(img, heatmap ):
+    # Resize the heatmap to match the original image size
+    heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
+
+    # Convert heatmap to RGB format and apply colormap
+    heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+
+    # Overlay the heatmap on the original image
+    superimposed_img = cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
+
+    cv2.imshow('Grad-CAM', superimposed_img)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
