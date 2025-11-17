@@ -6,7 +6,12 @@ from safe_image_folder import SafeImageFolder
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 import numpy as np
+import uvicorn
 import cv2
+from fastapi import FastAPI
+
+
+app = FastAPI()
 
 train_transforms = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -107,3 +112,10 @@ def visualize_heatmap(img, heatmap ):
     cv2.imshow('Grad-CAM', superimposed_img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
+
+if __name__ == "__main__":
+    uvicorn.run("fastapi_app:app", host="0.0.0.0", port=8000, reload=True)

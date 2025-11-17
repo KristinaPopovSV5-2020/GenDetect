@@ -2,9 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import timm
-import os
 
-from main import calculate_metrics, get_dataloaders, get_test_loader, plot_confusion_matrix, \
+from main import get_dataloaders, calculate_metrics, get_test_loader, plot_confusion_matrix, \
     plot_curves, find_best_threshold
 
 # Configuration
