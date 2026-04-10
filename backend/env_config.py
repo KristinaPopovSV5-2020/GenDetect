@@ -9,11 +9,14 @@ class Config:
         self.INPUT_DATA_FOLDER = os.getenv("INPUT_DATA_FOLDER")
         self.OUTPUT_DATASET_FOLDER = os.getenv("OUTPUT_DATASET_FOLDER")
 
-        if self.INPUT_DATA_FOLDER is None:
+        if not self.INPUT_DATA_FOLDER:
             raise ValueError("INPUT_DATA_FOLDER is not set")
 
-        if self.OUTPUT_DATASET_FOLDER is None:
+        if not self.OUTPUT_DATASET_FOLDER:
             raise ValueError("OUTPUT_DATASET_FOLDER is not set")
 
+        self.TRAIN_DIR = os.path.join(self.OUTPUT_DATASET_FOLDER, "train")
+        self.VAL_DIR = os.path.join(self.OUTPUT_DATASET_FOLDER, "val")
+        self.TEST_DIR = os.path.join(self.OUTPUT_DATASET_FOLDER, "test")
 
 config = Config()

@@ -1,10 +1,13 @@
 import numpy as np
+from timm.layers import config
 import torch
 import torch.nn as nn
 import timm
 import cv2
-from main import get_test_loader, calculate_metrics, plot_confusion_matrix, plot_curves, find_best_threshold, \
+from main import get_test_loader, calculate_metrics, plot_confusion_matrix, plot_curves, \
     get_dataloaders
+
+from ..env_config import config
 
 # Configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -12,9 +15,6 @@ num_classes = 2
 batch_size = 32
 epochs = 50
 learning_rate = 1e-4
-train_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/train'
-val_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/valid'
-test_dir = '/home/kristina-popov/Documents/MASTER/Real VS Fake Image.v1i.folder/test'
 
 
 
@@ -94,7 +94,7 @@ def evaluate(model, val_loader):
 
 
 def train_model():
-    train_loader, val_loader = get_dataloaders(train_dir, val_dir, batch_size)
+    train_loader, val_loader = get_dataloaders(config.TRAIN_DIR, config.VAL_DIR, batch_size)
     model = build_model()
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=learning_rate)
@@ -128,7 +128,6 @@ def test_model(model_path, test_dir, batch_size=32):
     calculate_metrics(y_true, y_pred, y_score)
     plot_confusion_matrix(y_true, y_pred)
     plot_curves(y_true, y_score)
-    best_t = find_best_threshold(y_true, y_score)
 
 
 def visualize_heatmap(img, heatmap ):
@@ -136,7 +135,10 @@ def visualize_heatmap(img, heatmap ):
     heatmap = cv2.resize(heatmap, (img.shape[1], img.shape[0]))
 
     # Convert heatmap to RGB format and apply colormap
-    heatmap = cv2.applyColorMap(np.uint8(255 * heatmap), cv2.COLORMAP_JET)
+    heatmap = cv2.applyColorMap(
+        np.array(255 * heatmap, dtype=np.uint8),
+        cv2.COLORMAP_JET
+    )
 
     # Overlay the heatmap on the original image
     superimposed_img = cv2.addWeighted(img, 0.6, heatmap, 0.4, 0)
@@ -147,4 +149,4 @@ def visualize_heatmap(img, heatmap ):
 
 if __name__ == '__main__':
     #train_model()
-    test_model('finetuned_resnet50.pth', test_dir)
+    test_model('finetuned_resnet50.pth', config.TEST_DIR)
