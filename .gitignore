@@ -196,3 +196,4 @@ yarn-error.log*
 *.log
 *.tgz
 *.zip
+/frontend/node_modules/
