@@ -1,32 +1,11 @@
 from sklearn.metrics import precision_score, accuracy_score, recall_score, f1_score, roc_auc_score
 from torch.utils.data import DataLoader
-from torchvision import  transforms
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from safe_image_folder import SafeImageFolder
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
-train_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.RandomHorizontalFlip(),
-    transforms.RandomRotation(20),
-    transforms.RandomResizedCrop(224, scale=(0.8, 1.2)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
-
-val_transforms = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406],
-        std=[0.229, 0.224, 0.225]
-    )
-])
-
+from transforms import train_transforms, val_transforms
 
 
 def calculate_metrics(y_true, y_pred, y_score):
@@ -82,4 +61,7 @@ def plot_curves(y_true, y_score):
     plt.ylabel("Precision")
     plt.title("Precision-Recall Curve")
     plt.show()
+
+
+
 
