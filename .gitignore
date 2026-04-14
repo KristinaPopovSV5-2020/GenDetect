@@ -198,3 +198,4 @@ yarn-error.log*
 *.zip
 /frontend/node_modules/
 /backend/dataset/
+*.pth
