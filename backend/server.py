@@ -4,6 +4,7 @@ import torch
 from PIL import Image
 import uvicorn
 import numpy as np
+from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 
 from resnet50.gradCAM import GradCAM, overlay_heatmap
@@ -14,6 +15,13 @@ from transforms import val_transforms
 HOST = "0.0.0.0"
 PORT = 8000
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3001"],
+    allow_credentials=True,
+    allow_methods=["predict", "gradcam"],
+    allow_headers=["*"],
+)
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
