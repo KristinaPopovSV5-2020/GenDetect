@@ -12,3 +12,13 @@ class TrainResNetConfig:
         self.threshold = threshold
         self.use_scheduler = use_scheduler
         self.model_name = model_name
+
+    def __repr__(self):
+        return (
+            f"TrainResNetConfig("
+            f"unfreeze_layers={self.unfreeze_layers}, "
+            f"dropout={self.dropout}, "
+            f"threshold={self.threshold}, "
+            f"scheduler={self.use_scheduler}, "
+            f"model_name='{self.model_name}')"
+        )
