@@ -35,11 +35,11 @@ function VerdictBadge({ prediction }: { prediction: number }) {
 }
 
 function getFakeProb(r: PredictResponse) {
-  return r.probability;
+  return r.probability_fake;
 }
 
 function getRealProb(r: PredictResponse) {
-  return 1 - r.probability;
+  return 1 - r.probability_fake;
 }
 
 interface DetectionTableProps {
@@ -89,6 +89,23 @@ export default function DetectionTable({
               style={{ fontSize: "1.3rem", fontWeight: 500, color: "#00ff99" }}
             >
               {Math.round(getRealProb(results.vit) * 100)}%
+            </span>
+          ),
+        },
+        {
+          label: "Decision threshold",
+          resnet: (
+            <span
+              style={{ fontSize: "1.3rem", fontWeight: 500, color: "#00ff99" }}
+            >
+              {results.resnet.threshold}
+            </span>
+          ),
+          vit: (
+            <span
+              style={{ fontSize: "1.3rem", fontWeight: 500, color: "#00ff99" }}
+            >
+              {results.vit.threshold}
             </span>
           ),
         },

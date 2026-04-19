@@ -18,15 +18,20 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support, roc
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Subset
 
-from backend.main import plot_confusion_matrix, plot_curves
+from main import plot_confusion_matrix, plot_curves
 
 import timm
 import csv
 
+from pathlib import Path
+from PIL import Image
+from torch.utils.data import Dataset
+from env_config import config
+
 @dataclass
 class Config:
-    data_dir: str = "/Users/tinamihajlovic/.cache/kagglehub/datasets/tristanzhang32/ai-generated-images-vs-real-images/versions/2/train"         
-    test_dir: str = "/Users/tinamihajlovic/.cache/kagglehub/datasets/tristanzhang32/ai-generated-images-vs-real-images/versions/2/test"          
+    data_dir: str = config.INPUT_DATA_FOLDER
+    test_dir: str = config.OUTPUT_DATASET_FOLDER
     image_size: int = 224
     batch_size: int = 32
     num_epochs: int = 10
@@ -41,7 +46,7 @@ class Config:
     dropout: float = 0.5
     patience: int = 2
     output_dir: str = "outputs"
-    device: str = "mps" if torch.backends.mps.is_available() else "cpu"
+    device: str = "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu"
     experiment_mode: str = "finetune_midlayer"   # possible modes: "finetune", "frozen_midlayer", "finetune_midlayer"
     probe_layer_idx: int = 12            
     probe_hidden_dim: int = 256         
@@ -53,13 +58,6 @@ def set_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-
-
-
-from pathlib import Path
-from PIL import Image
-from torch.utils.data import Dataset
-
 
 class BinaryImageFolderDataset(Dataset):
     def __init__(self, root_dir: str, transform=None, max_samples: int = None):

@@ -22,7 +22,7 @@ const commonComponents = {
         textTransform: "none" as CSSObject["textTransform"],
         fontSize: "1.0rem",
         width: "100%",
-        backgroundColor: "#033f3f",
+        backgroundColor: "#edc756",
         fontWeight: "bold",
       } as CSSObject,
     },
@@ -43,7 +43,7 @@ export const lightTheme = createTheme({
       main: "#000", // Dark text color
     },
     secondary: {
-      main: "#033f3f",
+      main: "#edc756",
     },
     background: {
       default: "#f8f2f2e7", // White
@@ -60,7 +60,7 @@ export const darkTheme = createTheme({
       main: "#f8f2f2e7",
     },
     secondary: {
-      main: "#033f3f",
+      main: "#edc756",
     },
     background: {
       default: "#393939",

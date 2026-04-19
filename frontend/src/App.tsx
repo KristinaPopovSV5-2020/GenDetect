@@ -12,6 +12,7 @@ interface Results {
   vit: PredictResponse;
   gradcamResnet: string;
   gradcamVit: string | null;
+  attentionVit: string | null;
 }
 
 export default function App() {
@@ -32,12 +33,14 @@ export default function App() {
     setLoading(true);
 
     try {
-      const [resnet, vit, gradcamResnet] = await Promise.all([
+      const [resnet, vit, gradcamResnet, gradcamVit, attentionVit] = await Promise.all([
         predictImage(file, "resnet"),
         predictImage(file, "vit"),
-        getGradCAM(file),
+        getGradCAM(file, "resnet_gradcam"),
+        getGradCAM(file, "vit_gradcam"),
+        getGradCAM(file, "vit_attention")
       ]);
-      setResults({ resnet, vit, gradcamResnet, gradcamVit: null });
+      setResults({ resnet, vit, gradcamResnet, gradcamVit, attentionVit});
     } catch (err) {
       setError("Error processing image. Make sure the server is running.");
     } finally {
@@ -132,8 +135,9 @@ export default function App() {
               {[
                 { title: "Grad-CAM — ResNet50", src: results.gradcamResnet },
                 { title: "Grad-CAM — ViT", src: results.gradcamVit },
+                { title: "Attention-Rollout — ViT", src: results.attentionVit },
               ].map(({ title, src }) => (
-                <Grid key={title} size={{ xs: 12, sm: 6 }}>
+                <Grid key={title} size={{ xs: 12, sm: 4 }}>
                   <Box
                     sx={{
                       border: "0.5px solid",

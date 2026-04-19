@@ -8,6 +8,7 @@ class Config:
     def __init__(self):
         self.INPUT_DATA_FOLDER = os.getenv("INPUT_DATA_FOLDER")
         self.OUTPUT_DATASET_FOLDER = os.getenv("OUTPUT_DATASET_FOLDER")
+        self.MODEL_FOLDER = os.getenv("MODEL_FOLDER")
 
         if not self.INPUT_DATA_FOLDER:
             raise ValueError("INPUT_DATA_FOLDER is not set")

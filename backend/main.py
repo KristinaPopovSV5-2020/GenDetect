@@ -3,7 +3,7 @@ from importlib.resources import path
 from sklearn.metrics import precision_score, accuracy_score, recall_score, f1_score, roc_auc_score
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from backend.safe_image_folder import SafeImageFolder
+from safe_image_folder import SafeImageFolder
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
