@@ -19,11 +19,12 @@ export async function predictImage(
   return res.json();
 }
 
-export async function getGradCAM(file: File): Promise<string> {
+export async function getGradCAM(file: File, model_name: string): Promise<string> {
   const form = new FormData();
   form.append("file", file);
+  form.append("model_name", model_name);
 
-  const res = await fetch(`${BASE_URL}/gradcam`, {
+  const res = await fetch(`${BASE_URL}/xai`, {
     method: "POST",
     body: form,
   });

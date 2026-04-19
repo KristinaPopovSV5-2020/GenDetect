@@ -15,7 +15,8 @@ const Layout: React.FC<PropsWithChildren> = ({ children }): JSX.Element => {
         overflowX: "hidden",
       }}
     >
-      <Typography variant="h1">Image Authenticity Checker</Typography>
+      <Typography variant="h1">AI or Real?</Typography>
+      <Typography variant="body1">AI-Generated image detection using CNN & ViT, with XAI.</Typography>
       {/* MAIN CONTENT */}
       <Box
         sx={{
@@ -45,7 +46,7 @@ const Layout: React.FC<PropsWithChildren> = ({ children }): JSX.Element => {
           }}
         >
           <Typography variant="body1" align="center">
-            Tinax2 Group
+            TinaxKika
           </Typography>
           <Typography variant="body1" align="center">
             © {new Date().getFullYear()} All rights reserved.

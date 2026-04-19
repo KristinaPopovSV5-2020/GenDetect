@@ -6,5 +6,6 @@ export interface PredictRequest {
 export interface PredictResponse {
   model: string;
   prediction: number; // 0 | 1
-  probability: number; // 0.0 – 1.0
+  probability_fake: number; // 0.0 – 1.0
+  threshold: number; // 0.0 – 1.0
 }

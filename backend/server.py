@@ -1,4 +1,5 @@
 import io
+from unittest import case
 import cv2
 import torch
 from PIL import Image
@@ -13,6 +14,10 @@ from fastapi import FastAPI, UploadFile, File, Form
 
 from resnet50.train_config import TrainResNetConfig
 from transforms import val_transforms
+
+from vit.vit import Config, build_model
+from vit.xai import ViTAttentionRollout, overlay_heatmap, ViTGradCAM
+
 HOST = "0.0.0.0"
 PORT = 8000
 app = FastAPI()
@@ -23,7 +28,7 @@ app.add_middleware(
     allow_methods=["predict", "gradcam"],
     allow_headers=["*"],
 )
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # ResNet
@@ -41,15 +46,33 @@ resnet_model.to(device)
 resnet_model.eval()
 
 target_resnet_layer = getattr(resnet_model.backbone, "layer4")[-1]
-gradcam_model = GradCAM(resnet_model, target_resnet_layer)
+resnet_gradcam_model = GradCAM(resnet_model, target_resnet_layer)
 
-print(threshold_resnet)
+# ViT
+vit_config = Config()
+vit_model = build_model(vit_config)
+vit_checkpoint = torch.load("../outputs/best_vit_model.pt", map_location=vit_config.device)
+vit_model.load_state_dict(vit_checkpoint["model_state_dict"])
+vit_model.to(vit_config.device)
+vit_model.eval()
+
+vit_attention_model = ViTAttentionRollout(vit_model)
+vit_gradcam_model = ViTGradCAM(vit_model, target_block_idx=-2)
+
 models = {
     "resnet": resnet_model,
+    "vit": vit_model,
+}
+
+xai_models = {
+    "vit_attention": vit_attention_model,
+    "vit_gradcam": vit_gradcam_model,
+    "resnet_gradcam": resnet_gradcam_model
 }
 
 thresholds = {
     "resnet": threshold_resnet,
+    "vit": 0.585,
 }
 
 @app.post("/predict")
@@ -68,18 +91,37 @@ async def predict(
     input_tensor = val_transforms(image).unsqueeze(0).to(device)
 
     with torch.no_grad():
-        output = model(input_tensor)
-        prob = torch.sigmoid(output).item()
-        pred = int(prob >= threshold)
+        if model_name == "resnet":
+            # internal convention: 0 = fake, 1 = real
+            output = model(input_tensor).view(-1)
+            prob_real = torch.sigmoid(output).item()
+            prob_fake = 1.0 - prob_real
+            pred = int(prob_fake >= (1.0 - threshold))
+
+        elif model_name == "vit":
+            # internal convention: 1 = fake
+            logits = model(input_tensor)
+            probs = torch.softmax(logits, dim=1)
+            prob_fake = probs[0, 1].item()
+            pred = int(prob_fake >= threshold)
+
+        else:
+            return {"error": "Unsupported model"}
 
     return {
         "model": model_name,
-        "prediction": pred,
-        "probability": prob
+        "prediction": pred,            
+        "probability_fake": prob_fake, 
+        "threshold": threshold
     }
 
-@app.post("/gradcam")
-async def gradcam(file: UploadFile = File(...)):
+@app.post("/xai")
+async def xai(file: UploadFile = File(...), model_name: str = Form(...)):
+
+    if model_name not in xai_models:
+        return {"error": "Invalid XAI model"}
+
+    model = xai_models[model_name]
 
     image_bytes = await file.read()
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
@@ -89,7 +131,7 @@ async def gradcam(file: UploadFile = File(...)):
     input_tensor = val_transforms(image).unsqueeze(0).to(device)
     input_tensor.requires_grad = True
 
-    heatmap = gradcam_model.generate(input_tensor)
+    heatmap = model.generate(input_tensor)
 
     output_img = overlay_heatmap(image_np, heatmap)
 

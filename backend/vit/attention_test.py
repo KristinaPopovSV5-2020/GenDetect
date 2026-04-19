@@ -6,7 +6,7 @@ import cv2
 from PIL import Image
 import matplotlib.pyplot as plt
 
-from backend.vit.vit import build_model, Config
+from vit.vit import build_model, Config
 
 
 def get_backbone(model):
