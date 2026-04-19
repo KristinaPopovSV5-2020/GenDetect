@@ -11,6 +11,19 @@ The project also focuses on **Explainable AI (XAI)**:
 
 ## Setup Instructions
 
+### Model setup
+
+### 1. Download checkpoints
+You can download the fine-tuned model checkpoints [here](https://drive.google.com/drive/folders/1n6aQ23kmzSl8nTu1Dt7_yrDZ5eZuK3kp).
+
+### 2. Add to .env
+Create *.env* file in `backend` folder.
+Add the path to the folder where you downloaded the model checkpoints to the .env file:
+
+```bash
+MODEL_FOLDER=example/
+```
+
 ### Backend Setup (FastAPI)
 
 #### 1. Create virtual environment
@@ -26,6 +39,22 @@ venv\Scripts\activate        # Windows
 
 ```bash
 pip install -r requirements.txt
+```
+
+### 2.5 Download Dataset [OPTIONAL]
+
+To run model training, add route to dataset folder to the *.env* file:
+
+```bash
+INPUT_DATA_FOLDER=/example      #path to your downloaded dataset
+OUTPUT_DATASET_FOLDER=/example  #path where the script will store the train, test, and validation splits
+```
+
+The scripts expect a dataset folder with the following structure:
+```bash
+├── INPUT_DATA_FOLDER/
+│ ├── real/
+│ └── fake/
 ```
 
 #### 3. Run server

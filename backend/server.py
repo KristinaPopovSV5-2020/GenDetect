@@ -18,6 +18,8 @@ from transforms import val_transforms
 from vit.vit import Config, build_model
 from vit.xai import ViTAttentionRollout, overlay_heatmap, ViTGradCAM
 
+from env_config import config
+
 HOST = "0.0.0.0"
 PORT = 8000
 app = FastAPI()
@@ -35,7 +37,7 @@ device = torch.device('mps' if torch.backends.mps.is_available() else 'cuda' if 
 best_config_resnet = TrainResNetConfig(unfreeze_layers=("layer3", "layer4"),dropout=0.6, use_scheduler=False, model_name='resnet50-best-config.pth')
 resnet_model = ResNetClassifier(best_config_resnet)
 checkpoint = torch.load(
-    f"resnet50/{best_config_resnet.model_name}",
+    f"{config.MODEL_FOLDER}/{best_config_resnet.model_name}",
     map_location=device,
     weights_only=False
 )
@@ -51,7 +53,7 @@ resnet_gradcam_model = GradCAM(resnet_model, target_resnet_layer)
 # ViT
 vit_config = Config()
 vit_model = build_model(vit_config)
-vit_checkpoint = torch.load("../outputs/best_vit_model.pt", map_location=vit_config.device)
+vit_checkpoint = torch.load(f"{config.MODEL_FOLDER}/best_vit_model.pt", map_location=vit_config.device)
 vit_model.load_state_dict(vit_checkpoint["model_state_dict"])
 vit_model.to(vit_config.device)
 vit_model.eval()
