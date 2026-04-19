@@ -1,6 +1,7 @@
 import numpy as np
+from itertools import product
 import random
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score
 import torch
 import torch.nn as nn
 import timm
@@ -18,6 +19,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 num_classes = 1
 batch_size = 32
 epochs = 20
+
+search_epochs = 6   # fast search
+patience = 3 # for early stopping
 
 class ResNetClassifier(nn.Module):
     def __init__(self, train_config: TrainResNetConfig):
@@ -104,7 +108,7 @@ def evaluate(model, loader, threshold):
 
 
 
-def train_model(resnet_config: TrainResNetConfig):
+def train_model(resnet_config: TrainResNetConfig, epochs):
     train_loader, val_loader = get_dataloaders(
         env_config.TRAIN_DIR,
         env_config.VAL_DIR,
@@ -134,12 +138,18 @@ def train_model(resnet_config: TrainResNetConfig):
         )
 
     best_auc = 0.0
+    best_threshold = 0.5
+    patience_counter = 0
 
     for epoch in range(epochs):
         avg_loss, train_auc = train_one_epoch(model, train_loader, criterion, optimizer)
 
-        y_true, y_pred, y_score = evaluate(model, val_loader, resnet_config.threshold)
+        y_true, _, y_score = evaluate(model, val_loader, 0.5)
+
         val_auc = roc_auc_score(y_true, y_score)
+
+        current_t, current_f1 = find_best_threshold(y_true, y_score)
+        y_pred = (y_score >= current_t).astype(int)
 
         print(f"Epoch [{epoch + 1}/{epochs}]")
         print("-------------------------------")
@@ -156,25 +166,46 @@ def train_model(resnet_config: TrainResNetConfig):
 
         if val_auc > best_auc:
             best_auc = val_auc
-            torch.save(model.state_dict(), resnet_config.model_name)
+            patience_counter = 0  # reset
+            best_threshold = current_t
+            torch.save({
+                "model_state": model.state_dict(),
+                "threshold": best_threshold
+            }, resnet_config.model_name)
+        else:
+            patience_counter += 1
+            print(f"No improvement for {patience_counter} epoch(s)")
+
+            if patience_counter >= patience:
+                print("Early stopping triggered.")
+                break
+
+    return best_auc
 
 
 
 def load_trained_model(resnet_config: TrainResNetConfig):
+    checkpoint = torch.load(
+        resnet_config.model_name,
+        map_location=device,
+        weights_only=False
+    )
+
     model = ResNetClassifier(resnet_config).to(device)
-    model.load_state_dict(torch.load(resnet_config.model_name, map_location=device))
+    model.load_state_dict(checkpoint["model_state"])
     model.eval()
-    return model
+
+    return model, checkpoint["threshold"]
 
 
 def test_model(test_dir, resnet_config: TrainResNetConfig):
-    model = load_trained_model(resnet_config)
+    model, threshold = load_trained_model(resnet_config)
     test_loader = get_test_loader(test_dir, batch_size)
 
     y_true, y_pred, y_score = evaluate(
         model,
         test_loader,
-        resnet_config.threshold
+        threshold
     )
 
     print("Test Set Metrics:")
@@ -183,31 +214,64 @@ def test_model(test_dir, resnet_config: TrainResNetConfig):
     plot_curves(y_true, y_score)
 
 
-config1 = TrainResNetConfig(
-    unfreeze_layers=("layer4",),
-    dropout=0.5,
-    threshold=0.5,
-    use_scheduler=False,
-    model_name="finetuned_resnet50-v2.pth"
-)
-config2 = TrainResNetConfig(
-    unfreeze_layers=("layer3", "layer4"),
-    dropout=0.6,
-    threshold=0.45,
-    use_scheduler=True,
-    model_name="best_model-v2.pth"
-)
-config3 = TrainResNetConfig(
-    unfreeze_layers=("layer3", "layer4"),
-    dropout=0.4,
-    threshold=0.45,
-    use_scheduler=True,
-    model_name="config3_v2.pth"
-)
+def find_best_threshold(y_true, y_score):
+    best_t, best_f1 = 0.5, 0
+
+    for t in np.linspace(0.3, 0.7, 9):
+        preds = (y_score >= t).astype(int)
+        f1 = f1_score(y_true, preds)
+
+        if f1 > best_f1:
+            best_f1 = f1
+            best_t = t
+
+    return best_t, best_f1
+
+def generate_configs():
+    unfreeze_options = [
+        ("layer4",),
+        ("layer3", "layer4")
+    ]
+
+    dropouts = [0.4, 0.6]
+    schedulers = [True, False]
+
+    configs = []
+
+    for u, d, s in product(unfreeze_options, dropouts, schedulers):
+        name = f"model_{'_'.join(u)}_{d}_{s}.pth"
+        configs.append(
+            TrainResNetConfig(u, d, 0.5, s, name)
+        )
+
+    return configs
+
+
+def run_search():
+    configs = generate_configs()
+    results = []
+
+    for i, config in enumerate(configs):
+        print(f"----Training config {i+1}/{len(configs)} ------")
+        print(config)
+
+        val_auc = train_model(config, search_epochs)
+        results.append((config, val_auc))
+
+    best_config, best_auc = max(results, key=lambda x: x[1])
+
+    print("-----------------")
+    print(f"Best config: {best_config}")
+    print(f"Best AUC: {best_auc}")
+
+    return best_config
+
 
 if __name__ == '__main__':
-    #train_model(config3)
+    #best_config = run_search()
+    best_config = TrainResNetConfig(unfreeze_layers=("layer3", "layer4"),dropout=0.6, use_scheduler=False, model_name='resnet50-best-config.pth')
+    #train_model(best_config, epochs=epochs)
     test_model(
         env_config.TEST_DIR,
-        config3
+        best_config
     )

@@ -26,12 +26,17 @@ def train_val_test_split(data, random_state=42):
 
 
 
-def load_image_paths(data_folder):
+def load_image_paths(data_folder, limit_per_class=8000):
     data = []
     for label in ['real', 'fake']:
         folder = os.path.join(data_folder, label)
-        for filepath in glob.glob(os.path.join(folder, '*.*')):
+
+        filepaths = sorted(glob.glob(os.path.join(folder, '*')))
+        filepaths = filepaths[:limit_per_class]
+
+        for filepath in filepaths:
             data.append((filepath, label))
+
     return data
 
 

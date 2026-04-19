@@ -35,10 +35,11 @@ function VerdictBadge({ prediction }: { prediction: number }) {
 }
 
 function getFakeProb(r: PredictResponse) {
-  return r.prediction === 1 ? r.probability : 1 - r.probability;
+  return r.probability;
 }
+
 function getRealProb(r: PredictResponse) {
-  return r.prediction === 0 ? r.probability : 1 - r.probability;
+  return 1 - r.probability;
 }
 
 interface DetectionTableProps {

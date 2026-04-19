@@ -8,9 +8,10 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 
 from resnet50.gradCAM import GradCAM, overlay_heatmap
-from resnet50.model import ResNetClassifier, config2
+from resnet50.model import ResNetClassifier
 from fastapi import FastAPI, UploadFile, File, Form
 
+from resnet50.train_config import TrainResNetConfig
 from transforms import val_transforms
 HOST = "0.0.0.0"
 PORT = 8000
@@ -26,21 +27,29 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 # ResNet
-resnet_model = ResNetClassifier(config2)
-resnet_model.load_state_dict(torch.load("resnet50/best_model-v2.pth", map_location=device))
+best_config_resnet = TrainResNetConfig(unfreeze_layers=("layer3", "layer4"),dropout=0.6, use_scheduler=False, model_name='resnet50-best-config.pth')
+resnet_model = ResNetClassifier(best_config_resnet)
+checkpoint = torch.load(
+    f"resnet50/{best_config_resnet.model_name}",
+    map_location=device,
+    weights_only=False
+)
+
+resnet_model.load_state_dict(checkpoint["model_state"])
+threshold_resnet = float(checkpoint["threshold"])
 resnet_model.to(device)
 resnet_model.eval()
 
 target_resnet_layer = getattr(resnet_model.backbone, "layer4")[-1]
 gradcam_model = GradCAM(resnet_model, target_resnet_layer)
 
-
+print(threshold_resnet)
 models = {
     "resnet": resnet_model,
 }
 
 thresholds = {
-    "resnet": config2.threshold,
+    "resnet": threshold_resnet,
 }
 
 @app.post("/predict")
