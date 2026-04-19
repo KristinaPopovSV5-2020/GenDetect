@@ -199,3 +199,5 @@ yarn-error.log*
 /frontend/node_modules/
 /backend/dataset/
 *.pth
+/outputs/  
+*.pt
