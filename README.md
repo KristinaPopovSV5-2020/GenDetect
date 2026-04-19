@@ -41,7 +41,7 @@ venv\Scripts\activate        # Windows
 pip install -r requirements.txt
 ```
 
-### 2.5 Download Dataset [OPTIONAL]
+#### 2.5 Download Dataset [OPTIONAL]
 
 To run model training, add route to dataset folder to the *.env* file:
 
