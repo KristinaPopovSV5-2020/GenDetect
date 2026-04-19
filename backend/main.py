@@ -1,7 +1,9 @@
+from importlib.resources import path
+
 from sklearn.metrics import precision_score, accuracy_score, recall_score, f1_score, roc_auc_score
 from torch.utils.data import DataLoader
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
-from safe_image_folder import SafeImageFolder
+from backend.safe_image_folder import SafeImageFolder
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc, precision_recall_curve
 
@@ -63,5 +65,12 @@ def plot_curves(y_true, y_score):
     plt.show()
 
 
+def download_dataset():
+    import kagglehub
+
+    path = kagglehub.dataset_download("tristanzhang32/ai-generated-images-vs-real-images")
+
+    print("Path to dataset files:", path)
 
 
+# download_dataset()
