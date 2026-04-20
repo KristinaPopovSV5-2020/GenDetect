@@ -27,14 +27,14 @@ def get_dataloaders(train_dir, val_dir, batch_size):
     train_dataset = SafeImageFolder(train_dir, transform=train_transforms)
     val_dataset = SafeImageFolder(val_dir, transform=val_transforms)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
 
     return train_loader, val_loader
 
 def get_test_loader(test_dir, batch_size):
     test_dataset = SafeImageFolder(test_dir, transform=val_transforms)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     return test_loader
 
 def plot_confusion_matrix(y_true, y_pred):

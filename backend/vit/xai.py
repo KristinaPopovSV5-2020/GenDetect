@@ -74,7 +74,7 @@ class ViTAttentionRollout:
         result = torch.eye(tokens, device=device).unsqueeze(0).repeat(batch_size, 1, 1)
 
         for attn in attn_maps:
-            attn = attn.mean(dim=1)  # average heads
+            attn = attn.mean(dim=1) 
             eye = torch.eye(tokens, device=device).unsqueeze(0).repeat(batch_size, 1, 1)
             attn = attn + eye
             attn = attn / attn.sum(dim=-1, keepdim=True)
@@ -89,9 +89,9 @@ class ViTAttentionRollout:
             _ = self.model(input_tensor)
 
         attn_maps = self._get_attention_maps()
-        rollout = self._compute_rollout(attn_maps)  # [B, tokens, tokens]
+        rollout = self._compute_rollout(attn_maps)  
 
-        mask = rollout[0, 0, 1:]  # CLS -> patches
+        mask = rollout[0, 0, 1:] 
         num_patches = mask.shape[0]
 
         grid_size = int(math.sqrt(num_patches))
@@ -119,25 +119,23 @@ class ViTGradCAM:
 
     def _register_hooks(self):
         def forward_hook(module, input, output):
-            self.activations = output  # [B, tokens, C]
-
+            self.activations = output 
         def backward_hook(module, grad_input, grad_output):
-            self.gradients = grad_output[0]  # [B, tokens, C]
+            self.gradients = grad_output[0]  
 
         self.target_layer.register_forward_hook(forward_hook)
         self.target_layer.register_full_backward_hook(backward_hook)
 
     def _reshape_transform(self, tensor):
-        # tensor: [B, tokens, C]
-        tensor = tensor[:, 1:, :]  # remove CLS token
+        tensor = tensor[:, 1:, :]  # removing CLS token
 
         B, num_patches, C = tensor.shape
         grid_size = int(math.sqrt(num_patches))
         if grid_size * grid_size != num_patches:
             raise ValueError(f"Patch count {num_patches} is not a square number")
 
-        tensor = tensor.reshape(B, grid_size, grid_size, C)   # [B, H, W, C]
-        tensor = tensor.permute(0, 3, 1, 2)                   # [B, C, H, W]
+        tensor = tensor.reshape(B, grid_size, grid_size, C)   
+        tensor = tensor.permute(0, 3, 1, 2)                   
         return tensor
 
     def generate(self, input_tensor):
@@ -146,7 +144,6 @@ class ViTGradCAM:
 
         output = self.model(input_tensor)
 
-        # multi-class and binary-safe for your 2-logit setup
         class_idx = output.argmax(dim=1)
         score = output[torch.arange(output.size(0)), class_idx]
         score.backward(retain_graph=True)
@@ -154,11 +151,11 @@ class ViTGradCAM:
         if self.gradients is None or self.activations is None:
             raise ValueError("Grad-CAM failed: missing gradients or activations")
 
-        activations = self._reshape_transform(self.activations)  # [B, C, H, W]
-        gradients = self._reshape_transform(self.gradients)      # [B, C, H, W]
+        activations = self._reshape_transform(self.activations)  
+        gradients = self._reshape_transform(self.gradients)      
 
-        weights = torch.mean(gradients, dim=(2, 3), keepdim=True)   # [B, C, 1, 1]
-        cam = torch.sum(weights * activations, dim=1)[0]            # [H, W]
+        weights = torch.mean(gradients, dim=(2, 3), keepdim=True)   
+        cam = torch.sum(weights * activations, dim=1)[0]           
 
         heatmap = cam.detach().cpu().numpy()
         heatmap = np.maximum(heatmap, 0)
