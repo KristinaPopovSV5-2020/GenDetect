@@ -201,3 +201,5 @@ yarn-error.log*
 *.pth
 /outputs/  
 *.pt
+datasets/
+result.txt

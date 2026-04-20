@@ -74,7 +74,7 @@ xai_models = {
 
 thresholds = {
     "resnet": threshold_resnet,
-    "vit": 0.585,
+    "vit": 0.5,
 }
 
 @app.post("/predict")
@@ -104,8 +104,9 @@ async def predict(
             # internal convention: 1 = fake
             logits = model(input_tensor)
             probs = torch.softmax(logits, dim=1)
-            prob_fake = probs[0, 1].item()
-            pred = int(prob_fake >= threshold)
+            prob_real = probs[0, 1].item()
+            prob_fake = 1.0 - prob_real
+            pred = int(prob_fake >= (1.0 - threshold))
 
         else:
             return {"error": "Unsupported model"}
